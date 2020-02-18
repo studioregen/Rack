@@ -12,8 +12,7 @@ f"Python 3.6+ is required"
 
 
 class UserException(Exception):
-    pass
-
+	pass
 
 def find(f, array):
 	for a in array:
@@ -31,17 +30,12 @@ def is_valid_slug(slug):
 	return re.match(r'^[a-zA-Z0-9_\-]+$', slug) != None
 
 
-def str_to_identifier(s):
-	if not s:
-		return "_"
-	# Identifiers can't start with a number
-	if s[0].isdigit():
-		s = "_" + s
-	# Capitalize first letter
-	s = s[0].upper() + s[1:]
-	# Replace special characters with underscore
-	s = re.sub(r'\W', '_', s)
-	return s
+def slug_to_identifier(slug):
+	if len(slug) == 0 or slug[0].isdigit():
+		slug = "_" + slug
+	slug = slug[0].upper() + slug[1:]
+	slug = slug.replace('-', '_')
+	return slug
 
 
 def create_plugin(slug, plugin_dir=None):
@@ -246,7 +240,7 @@ def create_module(slug, panel_filename=None, source_filename=None):
 		print(f"Source file generated at {source_filename}")
 
 		# Append model to plugin.hpp
-		identifier = str_to_identifier(slug)
+		identifier = slug_to_identifier(slug)
 
 		# Tell user to add model to plugin.hpp and plugin.cpp
 		print(f"""
@@ -290,7 +284,7 @@ def panel_to_components(tree):
 		name = el.get('{http://www.inkscape.org/namespaces/inkscape}label')
 		if name is None:
 			name = el.get('id')
-		name = str_to_identifier(name).upper()
+		name = slug_to_identifier(name).upper()
 		c['name'] = name
 
 		# Get color
@@ -341,7 +335,7 @@ def panel_to_components(tree):
 
 
 def components_to_source(components, slug):
-	identifier = str_to_identifier(slug)
+	identifier = slug_to_identifier(slug)
 	source = ""
 
 	source += f"""#include "plugin.hpp"
@@ -513,6 +507,24 @@ createmodule <module slug> [panel file] [source file]
 """
 	print(text)
 
+def print_layout(slug, panel_filename):
+	if panel_filename:
+		if not os.path.exists(panel_filename):
+			raise UserException(f"Panel not found at {panel_filename}.")
+
+		print(f"Panel found at {panel_filename}. Generating source file.")
+
+		# Read SVG XML
+		tree = xml.etree.ElementTree.parse(panel_filename)
+
+		components = panel_to_components(tree)
+		print(f"Components extracted from {panel_filename}")
+
+		# Write source
+		source = components_to_source(components, slug)
+
+		print(source);
+
 
 def parse_args(args):
 	script = args.pop(0)
@@ -527,6 +539,8 @@ def parse_args(args):
 		create_module(*args)
 	elif cmd == 'createmanifest':
 		create_manifest(*args)
+	elif cmd == 'printlayout':
+		print_layout(*args)
 	else:
 		print(f"Command not found: {cmd}")
 
